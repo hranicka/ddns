@@ -9,19 +9,47 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
 var (
-	ipProvider = "https://ipinfo.io/ip"
-	cfApiURL   = "https://api.cloudflare.com/client/v4"
-	cfToken    = ""
-	cfZoneID   = ""
-	cfDNSName  = ""
+	conf *config
 )
 
+type config struct {
+	IP struct {
+		Type   string `yaml:"type"`
+		Config struct {
+			URL string `yaml:"url"`
+		} `yaml:"config"`
+	} `yaml:"ip"`
+	DNS struct {
+		Type   string `yaml:"type"`
+		Config struct {
+			Token         string `yaml:"token"`
+			ZoneID        string `yaml:"zone_id"`
+			DNSRecordName string `yaml:"dns_record_name"`
+		} `yaml:"config"`
+	} `yaml:"dns"`
+}
+
 func main() {
+	conf = parseConfig()
 	ip := getIP()
 	updateDNS(ip)
+}
+
+func parseConfig() *config {
+	b, err := ioutil.ReadFile("config.yaml")
+	if err != nil {
+		panic(err)
+	}
+	c := &config{}
+	if err := yaml.Unmarshal(b, c); err != nil {
+		panic(err)
+	}
+	return c
 }
 
 func getIP() string {
@@ -30,7 +58,7 @@ func getIP() string {
 	}
 
 	// Contact public IP provider
-	resp, err := c.Get(ipProvider)
+	resp, err := c.Get(conf.IP.Config.URL)
 	if err != nil {
 		panic(err)
 	}
@@ -46,6 +74,8 @@ func getIP() string {
 }
 
 func updateDNS(ip string) {
+	apiURL := "https://api.cloudflare.com/client/v4"
+
 	c := &http.Client{
 		Timeout: time.Minute,
 	}
@@ -64,14 +94,17 @@ func updateDNS(ip string) {
 
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("%s/zones/%s/dns_records?type=A&name=%s", cfApiURL, cfZoneID, url.QueryEscape(cfDNSName)),
+		fmt.Sprintf(
+			"%s/zones/%s/dns_records?type=A&name=%s",
+			apiURL, conf.DNS.Config.ZoneID, url.QueryEscape(conf.DNS.Config.DNSRecordName),
+		),
 		nil,
 	)
 	if err != nil {
 		panic(err)
 	}
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Bearer "+cfToken)
+	req.Header.Add("Authorization", "Bearer "+conf.DNS.Config.Token)
 
 	r, err := c.Do(req)
 	if err != nil {
@@ -122,14 +155,17 @@ func updateDNS(ip string) {
 
 	req, err = http.NewRequest(
 		"PUT",
-		fmt.Sprintf("%s/zones/%s/dns_records/%s", cfApiURL, cfZoneID, lrr.ID),
+		fmt.Sprintf(
+			"%s/zones/%s/dns_records/%s",
+			apiURL, conf.DNS.Config.ZoneID, lrr.ID,
+		),
 		bytes.NewReader(js),
 	)
 	if err != nil {
 		panic(err)
 	}
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Bearer "+cfToken)
+	req.Header.Add("Authorization", "Bearer "+conf.DNS.Config.Token)
 
 	r, err = c.Do(req)
 	if err != nil {

@@ -1,0 +1,11 @@
+ip:
+  type: text # only `text` is supported at the moment
+  config:
+    url: https://ipinfo.io/ip # URL which returns just IP address in text format
+
+dns:
+  type: cloudflare # only `cloudflare` is supported at the moment
+  config:
+    token: # generate your API token, see https://api.cloudflare.com/#getting-started-requests
+    zone_id: # you can find Zone ID on "Overview" page of your Cloudflare Site
+    dns_record_name: # actual DNS record name to be updated with detected public IP (has to be of type "A" and must exist)

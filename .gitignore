@@ -1,2 +1,4 @@
-bin/*
-!bin/.git*
+build/*
+!build/.git*
+
+config.yaml
