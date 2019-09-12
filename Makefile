@@ -10,5 +10,5 @@ get:
 
 .PHONY: build
 build:
-	go build -o "$(BUILD_DIR)$(APP_NAME)"
-	cp config.dist.yaml "$(BUILD_DIR)"
+	go build -o $(BUILD_DIR)$(APP_NAME)
+	cp config.dist.yaml $(BUILD_DIR)config.yaml
